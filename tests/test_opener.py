@@ -1,7 +1,15 @@
+import pkg_resources
 import unittest
 
 import fs
 import fs.errors
+
+# Add additional openers to the entry points
+pkg_resources.get_entry_map('fs', 'fs.opener')['crashplanfs'] = \
+    pkg_resources.EntryPoint.parse(
+        'crashplanfs = fs_crashplanfs.opener:CrashPlanFSOpener',
+        dist=pkg_resources.get_distribution('fs')
+    )
 
 class TestOpener(unittest.TestCase):
     
