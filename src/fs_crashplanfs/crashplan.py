@@ -102,6 +102,7 @@ class CrashPlanFS(FS):
     _meta = {
         'case_insensitive': False,
         'invalid_path_chars': '\0',
+        'unicode_paths': True,
     }
     
     def __init__(self, dir_path='/', log_file=None, create=False):
