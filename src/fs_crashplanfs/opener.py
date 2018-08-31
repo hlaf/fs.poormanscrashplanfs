@@ -13,8 +13,9 @@ class CrashPlanFSOpener(Opener):
     def open_fs(self, fs_url, parse_result, writeable, create, cwd):
         dir_path = parse_result.resource
         
-        cpfs = CrashPlanFS(
-              dir_path,
-              log_file=None
+        cp_fs = CrashPlanFS(
+              dir_path=dir_path,
+              log_file=None,
+              create=create,
         )
-        return cpfs
+        return cp_fs

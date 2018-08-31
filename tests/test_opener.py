@@ -23,8 +23,5 @@ class TestOpener(unittest.TestCase):
             cp_fs.listdir('/')
         
         # Make sure a non-existent directory raises `CreateFailed`
-        #with self.assertRaises(fs.errors.CreateFailed):
-        #    cp_fs = fs.open_fs(base + '/no/such/directory')
-        
-#        cp_fs = fs.open_fs(base + '/')
-#        print cp_fs.listdir('/')
+        with self.assertRaises(fs.errors.CreateFailed):
+            cp_fs = fs.open_fs(base + '/no/such/directory')

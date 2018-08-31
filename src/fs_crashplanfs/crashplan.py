@@ -1,4 +1,3 @@
-import atexit
 from datetime import datetime
 import glob
 import io
@@ -9,7 +8,7 @@ import tempfile
 from fs import ResourceType
 from fs.base import FS
 from fs.mode import Mode
-from fs.path import dirname
+from fs.path import dirname, relpath, normpath
 import fs.errors
 from fs.info import Info
 from fs.subfs import SubFS
@@ -99,24 +98,33 @@ class CrashPlanLog:
 class CrashPlanFS(FS):
     
     _meta = {
+        'case_insensitive': False,
         'invalid_path_chars': '\0',
     }
     
-    def __init__(self, root_dir='/', log_file=None):
+    def __init__(self, dir_path='/', log_file=None, create=False):
         super(CrashPlanFS, self).__init__()
         
         self._data_provider = CrashPlanLog(log_file=log_file)
-        
         root_dir_tmp = tempfile.mkdtemp(prefix='crashplanfs')
         self.proxy_root = root_dir_tmp
+
+        self._prefix = ''
+        if not self.isdir(dir_path):
+            raise fs.errors.CreateFailed(
+                'root path {} does not exist'.format(dir_path))
     
-    def _info_from_remote_resource(self, path, namespaces):
-        resource_lines = self._data_provider.getLinesFor(path)
+        self._prefix = relpath(normpath(dir_path)).rstrip('/')
+        
+    def _getinfo_from_remote_resource(self, path, namespaces):
+        _path = self._get_prefixed_path(path)
+        
+        resource_lines = self._data_provider.getLinesFor(_path)
         if len(resource_lines) == 0:
             raise fs.errors.ResourceNotFound(path)
         
         # check if it is an exact match
-        exact_matches = [r for r in resource_lines if r.split()[6] == path]
+        exact_matches = [r for r in resource_lines if r.split()[6] == _path]
         
         if len(exact_matches) == 0:
             # It's an intermediate directory, without a dedicated log entry
@@ -131,7 +139,7 @@ class CrashPlanFS(FS):
         # basic namespace
         basic = {}
         raw_info['basic'] = basic
-        basic['name'] = os.path.split(path)[-1]
+        basic['name'] = os.path.split(_path)[-1]
         basic['is_dir'] = is_dir
 
         # details namespace
@@ -152,6 +160,10 @@ class CrashPlanFS(FS):
         
         return raw_info
     
+    def _get_prefixed_path(self, path):
+        return ('/' + os.path.join(self._prefix, path.lstrip('/'))
+                if self._prefix else path)
+    
     def _get_local_path(self, path):
         return os.path.join(self.proxy_root, path.lstrip('/'))
         
@@ -164,7 +176,7 @@ class CrashPlanFS(FS):
         is_local = os.path.exists(local_resource_path)
 
         if not is_local:
-            return Info(self._info_from_remote_resource(resource_path, namespaces))
+            return Info(self._getinfo_from_remote_resource(resource_path, namespaces))
             
         # basic namespace
         info = {}
@@ -196,6 +208,7 @@ class CrashPlanFS(FS):
     
     def listdir(self, path):
         self.check()
+        _path = self._get_prefixed_path(path)
         
         _type = self.gettype(path)
         if _type is not ResourceType.directory:
@@ -205,8 +218,8 @@ class CrashPlanFS(FS):
         if self._has_local_version(path):
             local_path_entries = os.listdir(self._get_local_path(path))
         
-        entries = [line.split() for line in self._data_provider.getLinesFor(path)]
-        remote_path_entries = set(os.path.basename(e[6]) for e in entries if os.path.dirname(e[6]) == path)
+        entries = [line.split() for line in self._data_provider.getLinesFor(_path)]
+        remote_path_entries = set(os.path.basename(e[6]) for e in entries if os.path.dirname(e[6]) == _path.rstrip('/'))
         
         return list(remote_path_entries.union(local_path_entries))
 
