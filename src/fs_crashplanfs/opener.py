@@ -15,7 +15,7 @@ class CrashPlanFSOpener(Opener):
         
         cp_fs = CrashPlanFS(
               dir_path=dir_path,
-              log_file=None,
+              log_file=parse_result.params.get('logfile'),
               create=create,
         )
         return cp_fs

@@ -3,27 +3,16 @@ import os
 import pytz
 import unittest
 
-import py
 from fs.test import FSTestCases
 
 from fs_crashplanfs.crashplan import CrashPlanFS
 
-
-class TestUtils(object):
-    
-    def get_test_data_dir(self):
-        return py.path.local(os.path.dirname(os.path.abspath(__file__))).join('data')
-
-    def get_resource(self, resource_name):
-        resource_path = self.get_test_data_dir().join(resource_name)
-        assert resource_path.check()
-        return resource_path
-
+from test_utils import TestUtils
 
 class TestCrashPlanFS(FSTestCases, unittest.TestCase, TestUtils):
     
     def make_fs(self):
-        log_file = self.get_resource('crashplan_backup_files.log')
+        log_file = self.get_resource('crashplan_empty.log')
         fs = CrashPlanFS(log_file=log_file.strpath)
         return fs
     
@@ -34,7 +23,9 @@ class TestCrashPlanFS(FSTestCases, unittest.TestCase, TestUtils):
         return len([p for p in fs.walk.dirs()])
 
     def test_logfile_to_fs_mapping(self):
-        fs = self.make_fs()
+        log_file = self.get_resource('crashplan_backup_files.log')
+        fs = CrashPlanFS(log_file=log_file.strpath)
+        
         expected_dirs = set(['hypervisor', 'kinks', 'bureau', 'vms'])
         assert set(fs.listdir('/my/crashplan/backups')) == expected_dirs
         

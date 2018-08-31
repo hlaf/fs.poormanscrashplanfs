@@ -1,8 +1,10 @@
+import atexit
 from datetime import datetime
 import glob
 import io
 import logging
 import os
+import shutil
 import tempfile
 
 from fs import ResourceType
@@ -105,14 +107,25 @@ class CrashPlanFS(FS):
     def __init__(self, dir_path='/', log_file=None, create=False):
         super(CrashPlanFS, self).__init__()
         
-        self._data_provider = CrashPlanLog(log_file=log_file)
+        try:
+            self._data_provider = CrashPlanLog(log_file=log_file)
+        except IOError as e:
+            message = 'Unable to create filesystem: {}'.format(e)
+            raise fs.errors.CreateFailed(message)
+        
         root_dir_tmp = tempfile.mkdtemp(prefix='crashplanfs')
+        atexit.register(shutil.rmtree, root_dir_tmp)
+        
         self.proxy_root = root_dir_tmp
 
         self._prefix = ''
-        if not self.isdir(dir_path):
-            raise fs.errors.CreateFailed(
-                'root path {} does not exist'.format(dir_path))
+        if create:
+            if not self.isdir(dir_path):
+                self.makedirs(dir_path)
+        else:
+            if not self.isdir(dir_path):
+                raise fs.errors.CreateFailed(
+                    'root path {} does not exist'.format(dir_path))
     
         self._prefix = relpath(normpath(dir_path)).rstrip('/')
         
@@ -219,7 +232,11 @@ class CrashPlanFS(FS):
             local_path_entries = os.listdir(self._get_local_path(path))
         
         entries = [line.split() for line in self._data_provider.getLinesFor(_path)]
-        remote_path_entries = set(os.path.basename(e[6]) for e in entries if os.path.dirname(e[6]) == _path.rstrip('/'))
+        remote_path_entries = set()
+        for e in entries:
+            if fs.path.isparent(_path, e[6]):
+                suffix = fs.path.frombase(fs.path.forcedir(_path), e[6]).split('/')[0]
+                if suffix: remote_path_entries.add(suffix)
         
         return list(remote_path_entries.union(local_path_entries))
 

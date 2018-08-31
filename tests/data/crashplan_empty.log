@@ -1,0 +1,4 @@
+I 03/15/17 03:54AM 42 [mittens Backup Set] Starting backup to CrashPlan Central: 1,145 files (1.40TB) to back up
+I 03/15/17 03:54AM 42 [mittens Backup Set] Stopped backup to CrashPlan Central in 0h:00m:03s: 0 files (0MB) backed up, 0MB encrypted and sent [0,0,0,0,0,0,0]
+I 03/15/17 03:54AM 42  - Reason for stopping backup: Full filesystem scan started.
+I 03/15/17 03:54AM 42 [mittens Backup Set] Starting backup to CrashPlan Central: 0 files (0.0GB) to back up
