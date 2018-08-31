@@ -39,7 +39,7 @@ class TestCrashPlanFS(FSTestCases, unittest.TestCase, TestUtils):
         assert set(fs.listdir('/my/crashplan/backups')) == expected_dirs
         
         vms_fs = fs.opendir('/my/crashplan/backups/vms')
-        assert len(vms_fs.listdir('/')) == 15
+        assert len(vms_fs.listdir('/')) == 16
         
         assert self.countFiles(vms_fs.opendir('unbearable')) == 48
         assert self.countDirs(vms_fs.opendir('unbearable')) == 2
@@ -65,3 +65,19 @@ class TestCrashPlanFS(FSTestCases, unittest.TestCase, TestUtils):
                                   namespaces=['details']).modified
         assert modified == datetime(2018, 8, 23, 14, 45, tzinfo=pytz.UTC)
         
+        
+class TestCrashPlanFSSubDir(FSTestCases, unittest.TestCase, TestUtils):
+    
+    def make_fs(self):
+        log_file = self.get_resource('crashplan_backup_files.log')
+        fs = CrashPlanFS(log_file=log_file.strpath,
+                         dir_path='/my/crashplan/backups/vms/empty_dir')
+        assert len(fs.listdir('/')) == 0
+        return fs
+
+    def test_listdir_nonempty_dir(self):
+        fs = CrashPlanFS(
+                log_file=self.get_resource('crashplan_backup_files.log').strpath,
+                dir_path='/my/crashplan/backups')
+        expected_dirs = set(['hypervisor', 'kinks', 'bureau', 'vms'])
+        assert set(fs.listdir('/')) == expected_dirs

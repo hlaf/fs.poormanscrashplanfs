@@ -6574,3 +6574,4 @@ I 08/23/18 02:40PM 42 673281a9db1a1134cc371ea071b84fa3 0 /my/crashplan/backups/v
 I 08/23/18 02:45PM 42 6b6f4a329ad9ba152c7443e14beae0fd 0 /my/crashplan/backups/vms/finn/finn-2018-08-15_00-09-00/finn-5-s004.vmdk (2146762752) [980,3115,513802240,0,0,0,0]
 I 08/23/18 02:48PM 42 6f5638445abd9d0960818c30e6bbf6c5 0 /my/crashplan/backups/vms/finn/finn-2018-08-15_00-09-00/finn-5-s002.vmdk (2141913088) [933,3153,489160704,0,0,0,0]
 I 08/23/18 02:48PM 42 [mittens Backup Set] Completed backup to CrashPlan Central in 0h:14m:35s: 4 files (8.60GB) backed up, 1.90GB encrypted and sent @ 14.7Mbps (Effective rate: 86.5Mbps) [3657,12703,1917321216,0,0,0,0]
+I 08/23/18 02:50PM 42 0123456789abcdef0123456789abcdef 1 /my/crashplan/backups/vms/empty_dir (0) [933,3153,489160704,0,0,0,0]
