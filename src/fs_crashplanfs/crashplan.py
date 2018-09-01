@@ -114,6 +114,8 @@ class CrashPlanFS(FS):
             message = 'Unable to create filesystem: {}'.format(e)
             raise fs.errors.CreateFailed(message)
         
+        self._log_file = log_file
+
         root_dir_tmp = tempfile.mkdtemp(prefix='crashplanfs')
         atexit.register(shutil.rmtree, root_dir_tmp)
         
@@ -318,10 +320,11 @@ class CrashPlanFS(FS):
         self.getinfo(path)
 
     def geturl(self, path, purpose='download'):
-        _path = self.validatepath(path)
+        _path = self.validatepath(unicode(path))
         if _path == '/':
             raise fs.errors.NoURL(path, purpose)
         if purpose == 'download':
-            return "crashplanfs://{}".format(_path)
+            return "crashplanfs://{}?logfile={}".format(
+                self._get_prefixed_path(_path), self._log_file)
         else:
             raise fs.errors.NoURL(path, purpose)

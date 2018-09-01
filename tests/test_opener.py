@@ -18,7 +18,6 @@ class TestOpener(unittest.TestCase, TestUtils):
     def test_create(self):
         directory = '/'
         base = 'crashplanfs://' 
-        url = base + directory
 
         log_file = self.get_resource('crashplan_backup_files.log').strpath
 
@@ -46,3 +45,13 @@ class TestOpener(unittest.TestCase, TestUtils):
         with fs.open_fs(base + nonexistent_dir + '?logfile={}'.format(log_file),
                         create=True) as cp_fs:
             self.assertTrue(cp_fs.isdir(nonexistent_dir))
+
+        # Check that the URL returned by geturl() contains all the information
+        # required to reopen the resource
+        valid_path = '/my/crashplan/backups'
+        with fs.open_fs(base + '?logfile={}'.format(log_file)) as cp_fs: 
+            self.assertTrue(cp_fs.isdir(valid_path))
+            self.assertTrue('vms' in cp_fs.listdir(valid_path))
+            valid_path_url = cp_fs.geturl(valid_path)
+        with fs.open_fs(valid_path_url) as cp_fs:
+            self.assertTrue('vms' in cp_fs.listdir('/'))
