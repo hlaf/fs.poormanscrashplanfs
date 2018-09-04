@@ -77,12 +77,12 @@ class CrashPlanLog:
             log_path = DEFAULT_CRASHPLAN_LOG_PATH
 
         if log_file:
-            log_files = [log_file]
+            self._log_files = [log_file]
         else:
-            log_files = glob.glob(os.path.join(log_path, 'backup_files.log.*'))
+            self._log_files = glob.glob(os.path.join(log_path, 'backup_files.log.*'))
 
         lines = []
-        for log_file in log_files:
+        for log_file in self._log_files:
             with open(log_file, 'r') as f:
                 lines.extend(f.readlines())
         self._lines = lines
@@ -96,6 +96,9 @@ class CrashPlanLog:
                                                     and len(l.split()[4]) == 32
                                                     and l.split()[6].startswith(s)]
         return res
+        
+    def getLogFiles(self):
+        return self._log_files
         
 class CrashPlanFS(FS):
     
@@ -114,8 +117,6 @@ class CrashPlanFS(FS):
             message = 'Unable to create filesystem: {}'.format(e)
             raise fs.errors.CreateFailed(message)
         
-        self._log_file = log_file
-
         root_dir_tmp = tempfile.mkdtemp(prefix='crashplanfs')
         atexit.register(shutil.rmtree, root_dir_tmp)
         
@@ -325,6 +326,6 @@ class CrashPlanFS(FS):
             raise fs.errors.NoURL(path, purpose)
         if purpose == 'download':
             return "crashplanfs://{}?logfile={}".format(
-                self._get_prefixed_path(_path), self._log_file)
+                self._get_prefixed_path(_path), self._data_provider.getLogFiles()[0])
         else:
             raise fs.errors.NoURL(path, purpose)
