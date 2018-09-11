@@ -103,7 +103,7 @@ class CrashPlanLog:
 class CrashPlanFS(FS):
     
     _meta = {
-        'case_insensitive': False,
+        'case_insensitive': os.path.normcase("Aa") != "aa",
         'invalid_path_chars': '\0',
         'unicode_paths': True,
     }
