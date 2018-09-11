@@ -41,5 +41,11 @@ node('linux') {
     
     verifyCoverage()
   }
-  
+
+  stage('Release') {
+	  bumpPackageVersion(repo_creds,
+						 'emt-jenkins',
+						 'jenkinsci@emtegrity.com',
+						 version_file='src/fs_crashplanfs/__init__.py')
+  }
 }
