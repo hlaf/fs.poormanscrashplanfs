@@ -2,8 +2,8 @@
 
 @Library('emt-pipeline-lib@master') _
 
-repo_creds = '800f1808-4270-4189-bb73-d73c2379af8e'
-repo_url = 'https://github.com/hlaf/fs.poormanscrashplanfs'
+repo_creds = 'emt-jenkins-git-ssh'
+repo_url = 'git@github.com:hlaf/fs.poormanscrashplanfs.git'
 
 node('linux') {
    
