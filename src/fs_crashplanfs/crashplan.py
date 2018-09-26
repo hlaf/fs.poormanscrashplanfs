@@ -193,31 +193,7 @@ class CrashPlanFS(FS):
 
         if not is_local:
             return Info(self._getinfo_from_remote_resource(resource_path, namespaces))
-            
-        # basic namespace
-        info = {}
-        basic = {}
-        info['basic'] = basic
-        basic['name'] = os.path.split(_resource_path)[-1]
-        basic['is_dir'] = self._transfer_area.isdir(local_resource_path)
-        
-        if 'details' in namespaces:
-            details = {}
-            info['details'] = details
-            #date_str = ' '.join(entry.split()[1:3])
-            #date_obj = datetime.strptime(date_str, '%m/%d/%y %I:%M%p')
-            #epoch_time = (date_obj - datetime(1970, 1, 1)).total_seconds()
-            #details['modified'] = epoch_time
-            details['size'] = self._transfer_area.getsize(local_resource_path)
-            details['type'] = int(ResourceType.directory if basic['is_dir']
-                                  else ResourceType.file)
-        
-        if 'access' in namespaces:
-            access = {}
-            info['access'] = access
-            access['permissions'] = Permissions(mode=0o755).dump()
-        
-        return Info(info)
+        return self._transfer_area.getinfo(local_resource_path, namespaces)    
         
     def _has_local_version(self, path):
         return self._transfer_area.exists(self._get_local_path(unicode(path)))
@@ -319,7 +295,9 @@ class CrashPlanFS(FS):
         self._transfer_area.removedir(self._get_local_path(_path))
 
     def setinfo(self, path, info):
-        self.getinfo(path)
+        self.check()
+        _path = self.validatepath(path)
+        self._transfer_area.setinfo(_path, info)
 
     def geturl(self, path, purpose='download'):
         _path = self.validatepath(unicode(path))
