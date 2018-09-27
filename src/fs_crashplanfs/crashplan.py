@@ -107,8 +107,11 @@ class CrashPlanFS(FS):
         'unicode_paths': True,
     }
     
-    def __init__(self, dir_path='/', log_file=None, create=False):
+    def __init__(self, dir_path='/', log_file=None, create=False,
+                 transfer_area=None, show_local=False):
         super(CrashPlanFS, self).__init__()
+        
+        self._show_local = show_local
         
         try:
             self._data_provider = CrashPlanLog(log_file=log_file)
@@ -116,8 +119,9 @@ class CrashPlanFS(FS):
             message = 'Unable to create filesystem: {}'.format(e)
             raise fs.errors.CreateFailed(message)
         
-        transfer_area = fs.tempfs.TempFS(identifier='__crashplanfs__')
-        atexit.register(lambda: transfer_area.clean())
+        if transfer_area is None:
+            transfer_area = fs.tempfs.TempFS(identifier='__crashplanfs__')
+            atexit.register(lambda: transfer_area.clean())
         self._transfer_area = transfer_area
 
         self._prefix = ''
@@ -128,7 +132,8 @@ class CrashPlanFS(FS):
             if not self.isdir(dir_path):
                 raise fs.errors.CreateFailed(
                     'root path {} does not exist'.format(dir_path))
-    
+
+        self._collect_garbage()    
         self._prefix = relpath(normpath(dir_path)).rstrip('/')
         
     def _getinfo_from_remote_resource(self, path, namespaces):
@@ -185,15 +190,33 @@ class CrashPlanFS(FS):
     def getinfo(self, resource_path, namespaces=None):
         self.check()
         _resource_path = self.validatepath(unicode(resource_path))
-        namespaces = namespaces or ()
-        
+        namespaces = namespaces and tuple(namespaces) or ()
+       
         # check if the resource exists in the transfer area
         local_resource_path = self._get_local_path(_resource_path)
-        is_local = self._transfer_area.exists(local_resource_path)
+        exists_locally = self._transfer_area.exists(local_resource_path)
+        
+        if _resource_path == '/':
+            return self._transfer_area.getinfo(local_resource_path, namespaces)
 
-        if not is_local:
-            return Info(self._getinfo_from_remote_resource(resource_path, namespaces))
-        return self._transfer_area.getinfo(local_resource_path, namespaces)    
+        try:
+            info_remote = Info(self._getinfo_from_remote_resource(resource_path, namespaces + ('details',)))
+        except fs.errors.ResourceNotFound, e:
+            if not exists_locally:
+                raise e
+            info_remote = None
+        
+        if not exists_locally:
+            return info_remote
+        
+        local_is_newer = (not info_remote or 
+                          self._transfer_area.getdetails(local_resource_path).modified > info_remote.modified)
+        if self._show_local and local_is_newer: 
+            return self._transfer_area.getinfo(local_resource_path, namespaces)    
+        elif info_remote:
+            return info_remote
+        else:
+            raise fs.errors.ResourceNotFound(resource_path)
         
     def _has_local_version(self, path):
         return self._transfer_area.exists(self._get_local_path(unicode(path)))
@@ -207,7 +230,7 @@ class CrashPlanFS(FS):
             raise fs.errors.DirectoryExpected(path)
         
         local_path_entries = []
-        if self._has_local_version(path):
+        if self._show_local and self._has_local_version(path):
             local_path_entries = self._transfer_area.listdir(self._get_local_path(path))
         
         entries = [line.split() for line in self._data_provider.getLinesFor(_path)]
@@ -308,3 +331,20 @@ class CrashPlanFS(FS):
                 self._get_prefixed_path(_path), self._data_provider.getLogFiles()[0])
         else:
             raise fs.errors.NoURL(path, purpose)
+    
+    def _collect_garbage(self):
+        
+        paths_to_remove = []
+        for path, info_local in self._transfer_area.walk.info(namespaces=['details']):
+            try:
+                info_remote = Info(self._getinfo_from_remote_resource(path,
+                                                                      namespaces=['details']))
+            except fs.errors.ResourceNotFound:
+                continue # The file is new
+
+            # Remove files in sync
+            if info_remote.modified >= info_local.modified:
+                paths_to_remove.append(path)
+        
+        for path in paths_to_remove:
+            self._transfer_area.remove(path)

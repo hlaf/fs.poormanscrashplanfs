@@ -42,7 +42,7 @@ class TestOpener(unittest.TestCase, TestUtils):
             cp_fs = fs.open_fs(base + nonexistent_dir)
 
         # Opening a non-existent directory with `create` should work
-        with fs.open_fs(base + nonexistent_dir + '?logfile={}'.format(log_file),
+        with fs.open_fs(base + nonexistent_dir + '?logfile={}&show_local=true'.format(log_file),
                         create=True) as cp_fs:
             self.assertTrue(cp_fs.isdir(nonexistent_dir))
 

@@ -13,7 +13,7 @@ class TestCrashPlanFS(FSTestCases, unittest.TestCase, TestUtils):
     
     def make_fs(self):
         log_file = self.get_resource('crashplan_empty.log')
-        fs = CrashPlanFS(log_file=log_file.strpath)
+        fs = CrashPlanFS(log_file=log_file.strpath, show_local=True)
         return fs
     
     def countFiles(self, fs):
@@ -55,14 +55,55 @@ class TestCrashPlanFS(FSTestCases, unittest.TestCase, TestUtils):
         modified = vms_fs.getinfo('finn/finn-2018-08-15_00-09-00/finn-5-s004.vmdk',
                                   namespaces=['details']).modified
         assert modified == datetime(2018, 8, 23, 14, 45, tzinfo=pytz.UTC)
+    
+    def test_garbage_collection(self):
         
+        log_file = self.get_resource('crashplan_backup_files.log')
+        
+        new_file = u'foo.txt'
+        newer_file = u'/my/crashplan/backups/vms/finn/finn-2018-08-15_00-09-00/finn-5-s004.vmdk' 
+        older_file = u'/my/crashplan/backups/vms/gabarolas/gabarolas-2018-08-02_16-07-17/gabarolas-s067.vmdk'
+        
+        with CrashPlanFS(log_file=log_file.strpath) as fs:
+            assert not fs.exists(new_file)
+            assert fs.exists(newer_file)
+            assert fs.exists(older_file)
+            older_file_remote_mtime = fs.getdetails(older_file).modified
+        
+        # Create a mock transfer area
+        from fs.memoryfs import MemoryFS
+        transfer_area = MemoryFS()
+        
+        # Populate the transfer area
+        transfer_area.appendtext(new_file, u'This file is new')
+        transfer_area.makedirs(os.path.split(newer_file)[0])
+        transfer_area.appendtext(newer_file, u'This file has been modified locally')
+        transfer_area.makedirs(os.path.split(older_file)[0])
+        transfer_area.appendtext(older_file, u'This file is up-to-date')
+        transfer_area.settimes(older_file, modified=older_file_remote_mtime)
+        
+        assert transfer_area.getdetails(older_file).modified <= older_file_remote_mtime
+        
+        # Pass the transfer area to crashplanfs
+        fs = CrashPlanFS(log_file=log_file.strpath, transfer_area=transfer_area)
+        
+        # The new file should not be listed, as it only exists in the transfer area
+        assert not fs.exists(new_file)
+        
+        # The newer file should be listed, with the remote modification time
+        assert fs.exists(newer_file)
+        assert transfer_area.getdetails(new_file).modified > fs.getdetails(newer_file).modified
+        
+        # The older file should be deleted from the transfer area
+        assert not transfer_area.exists(older_file)
         
 class TestCrashPlanFSSubDir(FSTestCases, unittest.TestCase, TestUtils):
     
     def make_fs(self):
         log_file = self.get_resource('crashplan_backup_files.log')
         fs = CrashPlanFS(log_file=log_file.strpath,
-                         dir_path='/my/crashplan/backups/vms/empty_dir')
+                         dir_path='/my/crashplan/backups/vms/empty_dir',
+                         show_local=True)
         assert len(fs.listdir('/')) == 0
         return fs
 
