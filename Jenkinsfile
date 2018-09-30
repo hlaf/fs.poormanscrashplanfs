@@ -13,21 +13,9 @@ node('linux') {
     
   stage('Acceptance') {
     
+	initializeVirtualEnv()
+
     sh '''
-        label="$(uname)"
-        echo "The label is ${label}"
-
-        case "${label}" in
-          Darwin* )
-            module load python
-            ;;
-          Linux* )
-            module load python/2.7-linux-x64-centos-rpm
-            ;;
-        esac
-
-        virtualenv master_venv
-
         source master_venv/bin/activate
 
         # NOTE: Ignore aliases
