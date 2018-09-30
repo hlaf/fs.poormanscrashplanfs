@@ -3,6 +3,7 @@ import os
 import pytz
 import unittest
 
+from fs.tempfs import TempFS
 from fs.test import FSTestCases
 
 from fs_crashplanfs.crashplan import CrashPlanFS
@@ -96,6 +97,34 @@ class TestCrashPlanFS(FSTestCases, unittest.TestCase, TestUtils):
         
         # The older file should be deleted from the transfer area
         assert not transfer_area.exists(older_file)
+    
+    def test_use_local_filesystem_as_transfer_area(self):
+        
+        log_file = self.get_resource('crashplan_backup_files.log')
+        
+        # Create a directory tree that can be used as a transfer area 
+        with TempFS() as transfer_area:
+            transfer_area.makedirs(u'/my/crashplan/backups')
+            new_file = u'/my/crashplan/backups/foo.txt'
+
+            with CrashPlanFS(log_file=log_file.strpath,
+                             _local_fs_root=transfer_area.root_path) as fs:
+                assert not transfer_area.exists(new_file)
+                assert not fs.exists(new_file)
+                fs.touch(new_file)
+                assert transfer_area.exists(new_file)
+        
+        # Create a directory tree that cannot be mapped to the remote directory
+        with TempFS() as transfer_area:
+            transfer_area.makedirs(u'/unmapped/crashplan/backups')
+            new_file = u'/my/crashplan/backups/foo.txt'
+
+            with CrashPlanFS(log_file=log_file.strpath,
+                             _local_fs_root=transfer_area.root_path) as fs:
+                assert not transfer_area.exists(new_file)
+                assert not fs.exists(new_file)
+                fs.touch(new_file)
+                assert not transfer_area.exists(new_file)
         
 class TestCrashPlanFSSubDir(FSTestCases, unittest.TestCase, TestUtils):
     

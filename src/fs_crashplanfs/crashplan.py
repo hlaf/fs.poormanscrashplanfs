@@ -23,6 +23,9 @@ class CrashPlanFile(io.IOBase):
     
     @classmethod
     def factory(cls, transfer_area, filename, mode):
+        dir_path = dirname(filename)
+        if not transfer_area.exists(dir_path):
+            transfer_area.makedirs(dir_path) 
         local_file = transfer_area.open(filename, mode=mode.to_platform_bin())
         proxy = cls(local_file, filename, mode)
         return proxy
@@ -108,7 +111,7 @@ class CrashPlanFS(FS):
     }
     
     def __init__(self, dir_path='/', log_file=None, create=False,
-                 transfer_area=None, show_local=False):
+                 transfer_area=None, show_local=False, _local_fs_root='/'):
         super(CrashPlanFS, self).__init__()
         
         self._show_local = show_local
@@ -118,10 +121,21 @@ class CrashPlanFS(FS):
         except IOError as e:
             message = 'Unable to create filesystem: {}'.format(e)
             raise fs.errors.CreateFailed(message)
+       
+        prefix = relpath(normpath(dir_path)).rstrip('/')
+        self._prefix = prefix
         
+        self._transfer_area = None
         if transfer_area is None:
-            transfer_area = fs.tempfs.TempFS(identifier='__crashplanfs__')
-            atexit.register(lambda: transfer_area.clean())
+            # Try to use the local filesystem as a transfer area
+            common_path = os.path.commonprefix([p for p in self.walk.files()])
+            common_path = self._prefix + common_path
+            if common_path and fs.open_fs(_local_fs_root).exists(common_path):
+                transfer_area = fs.open_fs(_local_fs_root)
+            else:
+                transfer_area = fs.tempfs.TempFS(identifier='__crashplanfs__')
+                atexit.register(lambda: transfer_area.clean())
+                
         self._transfer_area = transfer_area
 
         self._prefix = ''
@@ -133,10 +147,10 @@ class CrashPlanFS(FS):
                 raise fs.errors.CreateFailed(
                     'root path {} does not exist'.format(dir_path))
 
-        self._collect_garbage()    
-        self._prefix = relpath(normpath(dir_path)).rstrip('/')
+        self._collect_garbage()
+        self._prefix = prefix
         
-    def _getinfo_from_remote_resource(self, path, namespaces):
+    def _getinfo_remote(self, path, namespaces):
         _path = self._get_prefixed_path(path)
         
         resource_lines = self._data_provider.getLinesFor(_path)
@@ -192,15 +206,25 @@ class CrashPlanFS(FS):
         _resource_path = self.validatepath(unicode(resource_path))
         namespaces = namespaces and tuple(namespaces) or ()
        
+        if _resource_path == '/':
+            return Info({
+                "basic":
+                {
+                    "name": "",
+                    "is_dir": True
+                },
+                "details":
+                {
+                    "type": int(ResourceType.directory)
+                }
+            })
+
         # check if the resource exists in the transfer area
         local_resource_path = self._get_local_path(_resource_path)
-        exists_locally = self._transfer_area.exists(local_resource_path)
-        
-        if _resource_path == '/':
-            return self._transfer_area.getinfo(local_resource_path, namespaces)
+        exists_locally = self._transfer_area and self._transfer_area.exists(local_resource_path)
 
         try:
-            info_remote = Info(self._getinfo_from_remote_resource(resource_path, namespaces + ('details',)))
+            info_remote = Info(self._getinfo_remote(resource_path, namespaces + ('details',)))
         except fs.errors.ResourceNotFound, e:
             if not exists_locally:
                 raise e
@@ -219,7 +243,7 @@ class CrashPlanFS(FS):
             raise fs.errors.ResourceNotFound(resource_path)
         
     def _has_local_version(self, path):
-        return self._transfer_area.exists(self._get_local_path(unicode(path)))
+        return self._transfer_area and self._transfer_area.exists(self._get_local_path(unicode(path)))
     
     def listdir(self, path):
         self.check()
@@ -337,8 +361,8 @@ class CrashPlanFS(FS):
         paths_to_remove = []
         for path, info_local in self._transfer_area.walk.info(namespaces=['details']):
             try:
-                info_remote = Info(self._getinfo_from_remote_resource(path,
-                                                                      namespaces=['details']))
+                info_remote = Info(self._getinfo_remote(path,
+                                                        namespaces=['details']))
             except fs.errors.ResourceNotFound:
                 continue # The file is new
 
