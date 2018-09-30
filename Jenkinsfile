@@ -12,21 +12,9 @@ node('linux') {
   }
     
   stage('Acceptance') {
-    
 	initializeVirtualEnv()
-
-    sh '''
-        source master_venv/bin/activate
-
-        # NOTE: Ignore aliases
-        \\pip install tox --upgrade
-
-        tox -e coverage
-    '''
-
-    publishJUnitReport()
-    publishCoberturaReport()
-    
+	runTests()
+	publishCoberturaReport()
     verifyCoverage()
   }
 
