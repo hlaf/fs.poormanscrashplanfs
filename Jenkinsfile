@@ -13,7 +13,7 @@ node('linux') {
     
   stage('Acceptance') {
 	initializeVirtualEnv()
-	runTests()
+	runTests('coverage')
 	publishCoberturaReport()
     verifyCoverage()
   }
