@@ -216,6 +216,10 @@ class CrashPlanFS(FS):
                 "details":
                 {
                     "type": int(ResourceType.directory)
+                },
+                "access":
+                {
+                    "permissions": Permissions(mode=0o755).dump()
                 }
             })
 
