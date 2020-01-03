@@ -5,6 +5,8 @@
 repo_creds = 'emt-jenkins-git-ssh'
 repo_url = 'git@github.com:hlaf/fs.poormanscrashplanfs.git'
 
+getPipelineConfig().compute_coverage = true
+
 node('linux') {
    
   stage('Checkout') {
@@ -13,7 +15,7 @@ node('linux') {
     
   stage('Acceptance') {
 	initializeVirtualEnv()
-	runTests('coverage')
+	runTests(environment: 'coverage')
 	publishCoberturaReport()
     verifyCoverage()
   }
