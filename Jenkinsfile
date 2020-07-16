@@ -2,7 +2,7 @@
 
 @Library('emt-pipeline-lib@master') _
 
-repo_creds = 'emt-jenkins-git-ssh'
+repo_creds = 'emt-jenkins-github-ssh'
 repo_url = 'git@github.com:hlaf/fs.poormanscrashplanfs.git'
 
 getPipelineConfig().compute_coverage = true
