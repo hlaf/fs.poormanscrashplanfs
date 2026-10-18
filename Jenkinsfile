@@ -7,7 +7,7 @@ repo_url = 'git@github.com:hlaf/fs.poormanscrashplanfs.git'
 
 getPipelineConfig().compute_coverage = true
 
-node('docker-slave') {
+node('docker-cloud-agent') {
    
   stage('Checkout') {
 	checkoutFromGit(repo_creds, repo_url)
